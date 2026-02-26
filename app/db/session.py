@@ -14,7 +14,7 @@ engine = create_engine(
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
-    echo=settings.debug
+    echo=settings.debug,
 )
 
 # Create session factory
@@ -39,4 +39,5 @@ def get_db() -> Generator[Session, None, None]:
 def init_db() -> None:
     """Initialize database tables."""
     from app.db.models import Invoice  # Import models to register them
+
     Base.metadata.create_all(bind=engine)

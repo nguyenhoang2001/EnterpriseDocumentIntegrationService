@@ -29,7 +29,7 @@ def create_invoice(db: Session, invoice: InvoiceCreate) -> Invoice:
             raw_ocr_text=invoice.raw_ocr_text,
             confidence_score=invoice.confidence_score,
             status=InvoiceStatus.PROCESSED,
-            processed_at=datetime.utcnow()
+            processed_at=datetime.utcnow(),
         )
         db.add(db_invoice)
         db.commit()
@@ -39,14 +39,11 @@ def create_invoice(db: Session, invoice: InvoiceCreate) -> Invoice:
         db.rollback()
         raise DatabaseError(
             f"Invoice with number {invoice.invoice_number} already exists",
-            details={"error": str(e)}
+            details={"error": str(e)},
         )
     except Exception as e:
         db.rollback()
-        raise DatabaseError(
-            "Failed to create invoice",
-            details={"error": str(e)}
-        )
+        raise DatabaseError("Failed to create invoice", details={"error": str(e)})
 
 
 def get_invoice(db: Session, invoice_id: int) -> Invoice:
@@ -63,45 +60,42 @@ def get_invoice_by_number(db: Session, invoice_number: str) -> Optional[Invoice]
 
 
 def get_invoices(
-    db: Session, 
-    skip: int = 0, 
-    limit: int = 100,
-    status: Optional[InvoiceStatus] = None
+    db: Session, skip: int = 0, limit: int = 100, status: Optional[InvoiceStatus] = None
 ) -> List[Invoice]:
     """Get list of invoices with pagination."""
     query = db.query(Invoice)
-    
+
     if status:
         query = query.filter(Invoice.status == status)
-    
+
     return query.order_by(Invoice.created_at.desc()).offset(skip).limit(limit).all()
 
 
 def count_invoices(db: Session, status: Optional[InvoiceStatus] = None) -> int:
     """Count total invoices."""
     query = db.query(Invoice)
-    
+
     if status:
         query = query.filter(Invoice.status == status)
-    
+
     return query.count()
 
 
 def update_invoice_status(
-    db: Session, 
-    invoice_id: int, 
+    db: Session,
+    invoice_id: int,
     status: InvoiceStatus,
-    error_message: Optional[str] = None
+    error_message: Optional[str] = None,
 ) -> Invoice:
     """Update invoice status."""
     invoice = get_invoice(db, invoice_id)
     invoice.status = status
     invoice.error_message = error_message
     invoice.updated_at = datetime.utcnow()
-    
+
     if status == InvoiceStatus.PROCESSED:
         invoice.processed_at = datetime.utcnow()
-    
+
     try:
         db.commit()
         db.refresh(invoice)
@@ -109,8 +103,7 @@ def update_invoice_status(
     except Exception as e:
         db.rollback()
         raise DatabaseError(
-            "Failed to update invoice status",
-            details={"error": str(e)}
+            "Failed to update invoice status", details={"error": str(e)}
         )
 
 
@@ -122,7 +115,4 @@ def delete_invoice(db: Session, invoice_id: int) -> None:
         db.commit()
     except Exception as e:
         db.rollback()
-        raise DatabaseError(
-            "Failed to delete invoice",
-            details={"error": str(e)}
-        )
+        raise DatabaseError("Failed to delete invoice", details={"error": str(e)})

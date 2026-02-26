@@ -19,11 +19,11 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     # Startup
-    logger.info("Starting application", extra={
-        "environment": settings.environment,
-        "version": settings.app_version
-    })
-    
+    logger.info(
+        "Starting application",
+        extra={"environment": settings.environment, "version": settings.app_version},
+    )
+
     # Initialize database
     try:
         init_db()
@@ -31,9 +31,9 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error("Failed to initialize database", extra={"error": str(e)})
         raise
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down application")
 
@@ -45,7 +45,7 @@ app = FastAPI(
     description="A production-ready backend service for processing OCR output and integrating document data",
     lifespan=lifespan,
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
 
@@ -63,28 +63,24 @@ app.add_middleware(
 @app.exception_handler(OCRServiceException)
 async def ocr_exception_handler(request: Request, exc: OCRServiceException):
     """Handle custom OCR service exceptions."""
-    logger.error("OCR Service Exception", extra={
-        "path": request.url.path,
-        "error": exc.message,
-        "status_code": exc.status_code,
-        "details": exc.details
-    })
-    
+    logger.error(
+        "OCR Service Exception",
+        extra={
+            "path": request.url.path,
+            "error": exc.message,
+            "status_code": exc.status_code,
+            "details": exc.details,
+        },
+    )
+
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "error": exc.message,
-            "details": exc.details
-        }
+        content={"error": exc.message, "details": exc.details},
     )
 
 
 # Include API routes
-app.include_router(
-    router,
-    prefix=settings.api_v1_prefix,
-    tags=["invoices"]
-)
+app.include_router(router, prefix=settings.api_v1_prefix, tags=["invoices"])
 
 
 @app.get("/")
@@ -94,15 +90,11 @@ async def root():
         "service": settings.app_name,
         "version": settings.app_version,
         "status": "running",
-        "docs": "/docs"
+        "docs": "/docs",
     }
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "app.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=settings.debug
-    )
+
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=settings.debug)
