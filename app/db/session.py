@@ -38,6 +38,6 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db() -> None:
     """Initialize database tables."""
-    from app.db.models import Invoice  # Import models to register them
+    from app.db.models import Invoice, LineItem  # Import models to register them
 
     Base.metadata.create_all(bind=engine)

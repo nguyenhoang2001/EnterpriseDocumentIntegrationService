@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from enum import Enum
 
@@ -44,6 +44,28 @@ class OCRInput(BaseModel):
     )
 
 
+class LineItem(BaseModel):
+    """Schema for invoice line item."""
+
+    description: str = Field(..., min_length=1, max_length=500)
+    quantity: Decimal = Field(..., gt=0, alias="qty")
+    unit_price: Decimal = Field(..., ge=0)
+    amount: Decimal = Field(..., ge=0)
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "description": "Professional Services - Consulting",
+                "qty": "10",
+                "unit_price": "100.00",
+                "amount": "1000.00",
+            }
+        },
+    )
+
+
 class InvoiceCreate(BaseModel):
     """Schema for creating an invoice."""
 
@@ -57,6 +79,11 @@ class InvoiceCreate(BaseModel):
 
     customer_name: Optional[str] = Field(None, max_length=255)
     customer_address: Optional[str] = None
+
+    # Line items
+    items: Optional[List[LineItem]] = Field(
+        None, description="List of invoice line items"
+    )
 
     subtotal: Optional[Decimal] = Field(None, ge=0)
     tax_amount: Optional[Decimal] = Field(None, ge=0)
@@ -111,6 +138,8 @@ class InvoiceResponse(BaseModel):
 
     customer_name: Optional[str]
     customer_address: Optional[str]
+
+    items: Optional[List[LineItem]]
 
     subtotal: Optional[Decimal]
     tax_amount: Optional[Decimal]

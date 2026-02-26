@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 
-from app.db.models import Invoice, InvoiceStatus
+from app.db.models import Invoice, InvoiceStatus, LineItem
 from app.schemas.invoice import InvoiceCreate
 from app.core.exceptions import DatabaseError, NotFoundError
 
@@ -32,6 +32,20 @@ def create_invoice(db: Session, invoice: InvoiceCreate) -> Invoice:
             processed_at=datetime.utcnow(),
         )
         db.add(db_invoice)
+        db.flush()  # Get the invoice ID before adding line items
+
+        # Add line items if present
+        if invoice.items:
+            for item in invoice.items:
+                db_line_item = LineItem(
+                    invoice_id=db_invoice.id,
+                    description=item.description,
+                    quantity=item.quantity,
+                    unit_price=item.unit_price,
+                    amount=item.amount,
+                )
+                db.add(db_line_item)
+
         db.commit()
         db.refresh(db_invoice)
         return db_invoice

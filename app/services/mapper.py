@@ -2,10 +2,10 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from dateutil import parser as date_parser
 
-from app.schemas.invoice import InvoiceCreate, OCRInput
+from app.schemas.invoice import InvoiceCreate, OCRInput, LineItem
 from app.core.exceptions import MappingError
 from app.core.logging import get_logger
 
@@ -118,6 +118,92 @@ class OCRMapper:
 
         return None
 
+    @staticmethod
+    def _extract_line_items(
+        extracted_fields: Dict[str, Any],
+    ) -> Optional[List[LineItem]]:
+        """Extract line items from OCR data if present."""
+        # Common keys for line items arrays
+        line_items_keys = ["items", "line_items", "products", "details", "lines"]
+
+        items_data = None
+        for key in line_items_keys:
+            items_data = OCRMapper._find_field_value(extracted_fields, [key])
+            if items_data:
+                break
+
+        if not items_data or not isinstance(items_data, list):
+            return None
+
+        line_items = []
+        for item_data in items_data:
+            if not isinstance(item_data, dict):
+                continue
+
+            try:
+                # Extract description
+                description = (
+                    item_data.get("description")
+                    or item_data.get("desc")
+                    or item_data.get("item")
+                    or item_data.get("product")
+                    or item_data.get("name")
+                    or ""
+                )
+
+                # Extract quantity
+                qty_raw = (
+                    item_data.get("quantity")
+                    or item_data.get("qty")
+                    or item_data.get("count")
+                    or 1
+                )
+                qty = OCRMapper._parse_decimal(qty_raw)
+
+                # Extract unit price
+                unit_price_raw = (
+                    item_data.get("unit_price")
+                    or item_data.get("price")
+                    or item_data.get("rate")
+                    or 0
+                )
+                unit_price = OCRMapper._parse_decimal(unit_price_raw)
+
+                # Extract amount/total
+                amount_raw = (
+                    item_data.get("amount")
+                    or item_data.get("total")
+                    or item_data.get("line_total")
+                    or 0
+                )
+                amount = OCRMapper._parse_decimal(amount_raw)
+
+                # Validate required fields
+                if (
+                    description
+                    and qty
+                    and qty > 0
+                    and unit_price is not None
+                    and amount is not None
+                ):
+                    line_items.append(
+                        LineItem(
+                            description=str(description)[
+                                :500
+                            ],  # Truncate to max length
+                            qty=qty,
+                            unit_price=unit_price,
+                            amount=amount,
+                        )
+                    )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to parse line item: {item_data}. Error: {str(e)}"
+                )
+                continue
+
+        return line_items if line_items else None
+
     def map_ocr_to_invoice(self, ocr_input: OCRInput) -> InvoiceCreate:
         """
         Map OCR input to InvoiceCreate schema.
@@ -213,6 +299,9 @@ class OCRMapper:
             self._find_field_value(extracted, self.FIELD_MAPPINGS["currency"]) or "USD"
         )
 
+        # Extract line items (optional)
+        line_items = self._extract_line_items(extracted)
+
         # Check for mapping errors
         if errors:
             logger.error("Mapping failed with errors", extra={"errors": errors})
@@ -231,6 +320,7 @@ class OCRMapper:
             vendor_tax_id=str(vendor_tax_id) if vendor_tax_id else None,
             customer_name=str(customer_name) if customer_name else None,
             customer_address=str(customer_address) if customer_address else None,
+            items=line_items,
             subtotal=subtotal,
             tax_amount=tax_amount,
             total_amount=total_amount,
@@ -248,6 +338,7 @@ class OCRMapper:
             extra={
                 "invoice_number": invoice_data.invoice_number,
                 "total_amount": str(invoice_data.total_amount),
+                "line_items_count": len(line_items) if line_items else 0,
             },
         )
 
