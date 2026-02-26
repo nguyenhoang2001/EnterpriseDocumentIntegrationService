@@ -3,6 +3,7 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from pydantic import ValidationError as PydanticValidationError
 
 from app.db.session import get_db
 from app.db import crud
@@ -78,22 +79,43 @@ async def process_ocr_document(ocr_input: OCRInput, db: Session = Depends(get_db
 
     except MappingError as e:
         logger.error("Mapping error", extra={"error": str(e), "details": e.details})
-        return ProcessingResponse(
-            success=False,
-            message=e.message,
-            invoice=None,
-            errors=e.details.get("field_errors", {}),
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "success": False,
+                "message": e.message,
+                "invoice": None,
+                "errors": e.details.get("field_errors", {}),
+            },
         )
 
     except ValidationError as e:
         logger.error("Validation error", extra={"error": str(e), "details": e.details})
-        return ProcessingResponse(
-            success=False, message=e.message, invoice=None, errors=e.details
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "success": False,
+                "message": e.message,
+                "invoice": None,
+                "errors": e.details,
+            },
         )
 
     except OCRServiceException as e:
         logger.error("Service error", extra={"error": str(e), "details": e.details})
         raise HTTPException(status_code=e.status_code, detail=e.message)
+
+    except PydanticValidationError as e:
+        logger.error("Pydantic validation error", extra={"error": str(e)})
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "success": False,
+                "message": "Validation failed",
+                "invoice": None,
+                "errors": {"validation": str(e)},
+            },
+        )
 
     except Exception as e:
         logger.error("Unexpected error processing OCR", extra={"error": str(e)})
