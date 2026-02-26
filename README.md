@@ -5,6 +5,7 @@ A production-ready backend service for processing OCR output and integrating doc
 ## Overview
 
 This service provides a robust pipeline for:
+
 - Receiving raw OCR output (JSON format)
 - Mapping OCR data into structured business schemas (invoices)
 - Validating required fields and data types
@@ -47,6 +48,13 @@ This service provides a robust pipeline for:
 git clone <repository-url>
 cd ocr
 
+# Quick setup with helper script
+chmod +x dev.sh
+./dev.sh setup        # Set up virtual environment
+./dev.sh db-init      # Initialize database
+./dev.sh run          # Start development server
+
+# Or manual setup:
 # Create virtual environment
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -54,12 +62,11 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Set up environment variables
+# Copy environment configuration
 cp .env.example .env
-# Edit .env with your configuration
 
-# Run database migrations
-python -m app.database
+# Initialize database
+python -c "from app.db.session import init_db; init_db()"
 
 # Start the service
 uvicorn app.main:app --reload
@@ -77,6 +84,7 @@ docker-compose up --build
 ## API Endpoints
 
 ### Process OCR Document
+
 ```
 POST /api/v1/process-ocr
 Content-Type: application/json
@@ -93,11 +101,13 @@ Content-Type: application/json
 ```
 
 ### Get All Invoices
+
 ```
 GET /api/v1/invoices?skip=0&limit=100
 ```
 
 ### Get Invoice by ID
+
 ```
 GET /api/v1/invoices/{invoice_id}
 ```
@@ -109,30 +119,47 @@ ocr/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI application entry point
-│   ├── config.py            # Configuration management
-│   ├── database.py          # Database setup and session management
-│   ├── models/              # SQLAlchemy models
-│   ├── schemas/             # Pydantic schemas
-│   ├── services/            # Business logic
-│   ├── api/                 # API routes
-│   └── utils/               # Utilities (logging, exceptions)
+│   ├── api/
+│   │   └── routes.py        # API route handlers
+│   ├── core/
+│   │   ├── config.py        # Configuration management
+│   │   ├── logging.py       # Structured logging setup
+│   │   └── exceptions.py    # Custom exceptions
+│   ├── db/
+│   │   ├── session.py       # Database session management
+│   │   ├── models.py        # SQLAlchemy models
+│   │   └── crud.py          # Database operations
+│   ├── schemas/
+│   │   └── invoice.py       # Pydantic schemas
+│   └── services/
+│       ├── mapper.py        # OCR to invoice mapping
+│       └── validator.py     # Business rule validation
 ├── tests/                   # Test suite
-├── docker/                  # Docker configuration
+│   ├── conftest.py         # Test fixtures
+│   ├── test_mapper.py      # Mapper tests
+│   ├── test_validator.py   # Validator tests
+│   └── test_api.py         # API endpoint tests
 ├── requirements.txt         # Python dependencies
 ├── Dockerfile
 ├── docker-compose.yml
-└── README.md
+├── dev.sh                   # Development helper script
+├── .env.example            # Environment variables template
+├── README.md
+├── API_GUIDE.md            # API documentation
+└── DEPLOYMENT.md           # Deployment guide
 ```
 
 ## Development
 
 ### Running Tests
+
 ```bash
 pytest
 pytest --cov=app tests/
 ```
 
 ### Code Quality
+
 ```bash
 # Format code
 black app/ tests/
