@@ -45,9 +45,12 @@ class TestAPIEndpoints:
 
         response = client.post("/api/v1/process-ocr", json=incomplete_input)
 
+        # Route raises HTTPException with a dict detail on mapping error
+        assert response.status_code == 422
         data = response.json()
-        assert data["success"] is False
-        assert data["errors"] is not None
+        detail = data.get("detail", data)
+        assert detail.get("success") is False
+        assert detail.get("errors") is not None
 
     def test_get_invoices(self, client, sample_ocr_input):
         """Test getting list of invoices."""
@@ -111,3 +114,17 @@ class TestAPIEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert all(inv["status"] == "processed" for inv in data["invoices"])
+
+    # ── Step 7 tests ──────────────────────────────────────────────────────────
+
+    def test_process_ocr_returns_201(self, client, sample_ocr_input):
+        """API returns HTTP 201 Created on successful OCR processing."""
+        response = client.post("/api/v1/process-ocr", json=sample_ocr_input)
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["success"] is True
+        assert data["invoice"] is not None
+        assert data["invoice"]["invoice_number"] == "INV-2024-001"
+        assert "validation_status" in data
+        assert data["validation_status"] == "PASSED"
