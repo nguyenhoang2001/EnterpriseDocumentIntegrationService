@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.core.exceptions import OCRServiceException
+from app.core.middleware import RequestIDMiddleware
 from app.db.session import init_db
 from app.api.routes import router
 
@@ -48,6 +49,9 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+
+# Add RequestID middleware (should be first to track all requests)
+app.add_middleware(RequestIDMiddleware)
 
 # Add CORS middleware
 app.add_middleware(

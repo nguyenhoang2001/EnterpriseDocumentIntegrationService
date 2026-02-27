@@ -1,0 +1,38 @@
+{
+  "document_id": "doc-003",
+  "extracted_fields": {
+    "invoice_number": "INV-2024-003",
+    "invoice_date": "2024-02-15",
+    "due_date": "2024-03-15",
+    "vendor_name": "Tech Solutions Inc",
+    "vendor_address": "789 Tech Blvd, San Francisco, CA 94107",
+    "vendor_tax_id": "98-7654321",
+    "customer_name": "Global Corp",
+    "customer_address": "456 Business Ave, New York, NY 10001",
+    "items": [
+      {
+        "description": "Software License - Enterprise",
+        "qty": 5,
+        "unit_price": 499.99,
+        "amount": 2499.95
+      },
+      {
+        "description": "Technical Support - Premium",
+        "qty": 1,
+        "unit_price": 1500.00,
+        "amount": 1500.00
+      },
+      {
+        "description": "Training Sessions",
+        "qty": 3,
+        "unit_price": 350.00,
+        "amount": 1050.00
+      }
+    ],
+    "subtotal": 5049.95,
+    "tax": 454.50,
+    "total": 5504.45,
+    "currency": "USD"
+  },
+  "confidence_score": 96.5
+}

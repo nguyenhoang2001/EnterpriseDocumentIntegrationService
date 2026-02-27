@@ -1,0 +1,109 @@
+Testing POST /api/v1/process-ocr with line items...
+------------------------------------------------------------
+Status Code: 201
+
+Response:
+{
+  "success": true,
+  "message": "Invoice INV-2024-160027 processed successfully",
+  "invoice": {
+    "id": 10,
+    "invoice_number": "INV-2024-160027",
+    "invoice_date": "2024-02-15T00:00:00",
+    "due_date": "2024-03-15T00:00:00",
+    "vendor_name": "Tech Solutions Inc",
+    "vendor_address": "789 Tech Blvd, San Francisco, CA 94107",
+    "vendor_tax_id": "98-7654321",
+    "customer_name": "Global Corp",
+    "customer_address": "456 Business Ave, New York, NY 10001",
+    "items": [
+      {
+        "description": "Software License - Enterprise",
+        "qty": "5.000",
+        "unit_price": "499.99",
+        "amount": "2499.95"
+      },
+      {
+        "description": "Technical Support - Premium",
+        "qty": "1.000",
+        "unit_price": "1500.00",
+        "amount": "1500.00"
+      },
+      {
+        "description": "Training Sessions",
+        "qty": "3.000",
+        "unit_price": "350.00",
+        "amount": "1050.00"
+      }
+    ],
+    "subtotal": "5049.95",
+    "tax_amount": "454.50",
+    "total_amount": "5504.45",
+    "currency": "USD",
+    "confidence_score": "96.50",
+    "status": "processed",
+    "error_message": null,
+    "created_at": "2026-02-26T09:00:27.921270",
+    "updated_at": "2026-02-26T09:00:27.921273",
+    "processed_at": "2026-02-26T09:00:27.918923"
+  },
+  "errors": null
+}
+
+============================================================
+✓ Invoice created successfully with ID: 10
+
+============================================================
+Testing GET /api/v1/invoices/10...
+------------------------------------------------------------
+Status Code: 200
+
+Response:
+{
+  "id": 10,
+  "invoice_number": "INV-2024-160027",
+  "invoice_date": "2024-02-15T00:00:00",
+  "due_date": "2024-03-15T00:00:00",
+  "vendor_name": "Tech Solutions Inc",
+  "vendor_address": "789 Tech Blvd, San Francisco, CA 94107",
+  "vendor_tax_id": "98-7654321",
+  "customer_name": "Global Corp",
+  "customer_address": "456 Business Ave, New York, NY 10001",
+  "items": [
+    {
+      "description": "Software License - Enterprise",
+      "qty": "5.000",
+      "unit_price": "499.99",
+      "amount": "2499.95"
+    },
+    {
+      "description": "Technical Support - Premium",
+      "qty": "1.000",
+      "unit_price": "1500.00",
+      "amount": "1500.00"
+    },
+    {
+      "description": "Training Sessions",
+      "qty": "3.000",
+      "unit_price": "350.00",
+      "amount": "1050.00"
+    }
+  ],
+  "subtotal": "5049.95",
+  "tax_amount": "454.50",
+  "total_amount": "5504.45",
+  "currency": "USD",
+  "confidence_score": "96.50",
+  "status": "processed",
+  "error_message": null,
+  "created_at": "2026-02-26T09:00:27.921270",
+  "updated_at": "2026-02-26T09:00:27.921273",
+  "processed_at": "2026-02-26T09:00:27.918923"
+}
+
+============================================================
+✓ Line items retrieved successfully (3 items):
+
+  Item 1:
+    Description: Software License - Enterprise
+✗ Error: 'quantity'

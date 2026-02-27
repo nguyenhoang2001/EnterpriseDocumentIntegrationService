@@ -2,11 +2,23 @@
 
 import logging
 import sys
-from typing import Any
 from pythonjsonlogger import jsonlogger
 from app.core.config import get_settings
 
 settings = get_settings()
+
+# Global error counter
+_error_counts: dict[str, int] = {}
+
+
+def increment_error_count(error_type: str = "general") -> None:
+    """Increment the error count for a given error type."""
+    _error_counts[error_type] = _error_counts.get(error_type, 0) + 1
+
+
+def get_error_counts() -> dict[str, int]:
+    """Return a copy of the current error counts."""
+    return dict(_error_counts)
 
 
 class CustomJsonFormatter(jsonlogger.JsonFormatter):
@@ -29,29 +41,46 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
         log_record["service"] = settings.app_name
         log_record["environment"] = settings.environment
 
+        # Track and attach error counts
+        if record.levelno >= logging.ERROR:
+            error_type = getattr(record, "error_type", record.module)
+            increment_error_count(error_type)
+        log_record["error_counts"] = get_error_counts()
+
+        # Add request_id if available in context
+        try:
+            from app.core.middleware import get_request_id
+
+            request_id = get_request_id()
+            if request_id:
+                log_record["request_id"] = request_id
+        except Exception:
+            # If middleware not initialized or outside request context
+            pass
+
 
 def setup_logging() -> logging.Logger:
     """Configure and return application logger."""
 
-    # Create logger
-    logger = logging.getLogger("ocr_service")
-    logger.setLevel(getattr(logging, settings.log_level.upper()))
-
-    # Remove existing handlers
-    logger.handlers.clear()
+    # Create formatter
+    formatter = CustomJsonFormatter("%(timestamp)s %(level)s %(name)s %(message)s")
 
     # Create console handler with JSON formatter
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(getattr(logging, settings.log_level.upper()))
-
-    # Set JSON formatter
-    formatter = CustomJsonFormatter("%(timestamp)s %(level)s %(name)s %(message)s")
     console_handler.setFormatter(formatter)
 
-    # Add handler to logger
-    logger.addHandler(console_handler)
+    # Apply to root "app" logger so all app.* child loggers inherit it
+    app_logger = logging.getLogger("app")
+    app_logger.setLevel(getattr(logging, settings.log_level.upper()))
+    app_logger.handlers.clear()
+    app_logger.addHandler(console_handler)
+    app_logger.propagate = False
 
-    # Prevent propagation to root logger
+    # Also set up the named ocr_service logger
+    logger = logging.getLogger("ocr_service")
+    logger.setLevel(getattr(logging, settings.log_level.upper()))
+    logger.handlers.clear()
+    logger.addHandler(console_handler)
     logger.propagate = False
 
     return logger

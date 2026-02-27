@@ -1,0 +1,10 @@
+Testing POST /api/v1/process-ocr with line items...
+------------------------------------------------------------
+Status Code: 500
+
+Response:
+{
+  "detail": "Invoice with number INV-2024-003 already exists"
+}
+
+✗ Request failed with status 500
