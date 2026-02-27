@@ -13,6 +13,7 @@ from app.schemas.invoice import (
     InvoiceResponse,
     ProcessingResponse,
     InvoiceListResponse,
+    ValidationStatus,
 )
 from app.services.mapper import OCRMapper
 from app.services.validator import InvoiceValidator
@@ -67,12 +68,21 @@ async def process_ocr_document(ocr_input: OCRInput, db: Session = Depends(get_db
             extra={
                 "invoice_id": db_invoice.id,
                 "invoice_number": db_invoice.invoice_number,
+                "validation_status": validation_result.get(
+                    "validation_status", "PASSED"
+                ),
+                "invoice_status": (
+                    db_invoice.status.value if db_invoice.status else None
+                ),
             },
         )
 
         return ProcessingResponse(
             success=True,
             message=f"Invoice {db_invoice.invoice_number} processed successfully",
+            validation_status=ValidationStatus(
+                validation_result.get("validation_status", "PASSED")
+            ),
             invoice=InvoiceResponse.model_validate(db_invoice),
             errors=None,
         )
@@ -90,7 +100,14 @@ async def process_ocr_document(ocr_input: OCRInput, db: Session = Depends(get_db
         )
 
     except ValidationError as e:
-        logger.error("Validation error", extra={"error": str(e), "details": e.details})
+        logger.error(
+            "Validation error",
+            extra={
+                "error": str(e),
+                "details": e.details,
+                "validation_status": "FAILED",
+            },
+        )
         raise HTTPException(
             status_code=422,
             detail={

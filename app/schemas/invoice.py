@@ -157,11 +157,23 @@ class InvoiceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ValidationStatus(str, Enum):
+    """Explicit validation status label."""
+
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+    SKIPPED = "SKIPPED"
+
+
 class ProcessingResponse(BaseModel):
     """Schema for OCR processing response."""
 
     success: bool
     message: str
+    validation_status: Optional[ValidationStatus] = Field(
+        None,
+        description="Explicit result of invoice validation: PASSED, FAILED, or SKIPPED",
+    )
     invoice: Optional[InvoiceResponse] = None
     errors: Optional[Dict[str, str]] = None
 
@@ -170,6 +182,7 @@ class ProcessingResponse(BaseModel):
             "example": {
                 "success": True,
                 "message": "Invoice processed successfully",
+                "validation_status": "PASSED",
                 "invoice": {
                     "id": 1,
                     "invoice_number": "INV-2024-001",

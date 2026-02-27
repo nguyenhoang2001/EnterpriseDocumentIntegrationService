@@ -77,7 +77,12 @@ class InvoiceValidator:
         if errors:
             logger.error(
                 "Validation failed",
-                extra={"invoice_number": invoice.invoice_number, "errors": errors},
+                extra={
+                    "invoice_number": invoice.invoice_number,
+                    "validation_status": "FAILED",
+                    "errors": errors,
+                    "warnings": warnings,
+                },
             )
             raise ValidationError(
                 "Invoice validation failed",
@@ -88,11 +93,13 @@ class InvoiceValidator:
             "Validation passed",
             extra={
                 "invoice_number": invoice.invoice_number,
+                "validation_status": "PASSED",
                 "warnings_count": len(warnings),
+                "warnings": warnings,
             },
         )
 
-        return {"valid": True, "warnings": warnings}
+        return {"valid": True, "validation_status": "PASSED", "warnings": warnings}
 
     def _validate_invoice_number(self, invoice_number: str) -> bool:
         """Validate invoice number format."""
