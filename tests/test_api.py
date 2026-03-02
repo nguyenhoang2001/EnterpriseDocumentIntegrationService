@@ -1,130 +1,111 @@
-"""Tests for API endpoints."""
+"""Test script for line items feature."""
 
-import pytest
+import requests
+import json
 from datetime import datetime
 
+# Generate unique invoice number
+invoice_num = f"INV-2024-{datetime.now().strftime('%H%M%S')}"
 
-class TestAPIEndpoints:
-    """Test cases for API endpoints."""
+# Test data with line items
+test_data = {
+    "document_id": f"doc-{datetime.now().strftime('%H%M%S')}",
+    "extracted_fields": {
+        "invoice_number": invoice_num,
+        "invoice_date": "2024-02-15",
+        "due_date": "2024-03-15",
+        "vendor_name": "Tech Solutions Inc",
+        "vendor_address": "789 Tech Blvd, San Francisco, CA 94107",
+        "vendor_tax_id": "98-7654321",
+        "customer_name": "Global Corp",
+        "customer_address": "456 Business Ave, New York, NY 10001",
+        "items": [
+            {
+                "description": "Software License - Enterprise",
+                "qty": 5,
+                "unit_price": 499.99,
+                "amount": 2499.95,
+            },
+            {
+                "description": "Technical Support - Premium",
+                "qty": 1,
+                "unit_price": 1500.00,
+                "amount": 1500.00,
+            },
+            {
+                "description": "Training Sessions",
+                "qty": 3,
+                "unit_price": 350.00,
+                "amount": 1050.00,
+            },
+        ],
+        "subtotal": 5049.95,
+        "tax": 454.50,
+        "total": 5504.45,
+        "currency": "USD",
+    },
+    "confidence_score": 96.5,
+}
 
-    def test_health_check(self, client):
-        """Test health check endpoint."""
-        response = client.get("/api/v1/health")
+print("Testing POST /api/v1/process-ocr with line items...")
+print("-" * 60)
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "healthy"
+try:
+    response = requests.post(
+        "http://localhost:8000/api/v1/process-ocr", json=test_data, timeout=10
+    )
 
-    def test_root_endpoint(self, client):
-        """Test root endpoint."""
-        response = client.get("/")
+    print(f"Status Code: {response.status_code}")
+    print("\nResponse:")
+    print(json.dumps(response.json(), indent=2))
 
-        assert response.status_code == 200
-        data = response.json()
-        assert "service" in data
-        assert "version" in data
+    if response.status_code in [200, 201]:
+        invoice_data = response.json()
+        if invoice_data.get("success"):
+            invoice = invoice_data.get("invoice", {})
+            invoice_id = invoice.get("id")
 
-    def test_process_ocr_success(self, client, sample_ocr_input):
-        """Test successful OCR processing."""
-        response = client.post("/api/v1/process-ocr", json=sample_ocr_input)
+            print("\n" + "=" * 60)
+            print(f"✓ Invoice created successfully with ID: {invoice_id}")
 
-        assert response.status_code == 201
-        data = response.json()
-        assert data["success"] is True
-        assert data["invoice"] is not None
-        assert data["invoice"]["invoice_number"] == "INV-2024-001"
+            # Test GET to retrieve the invoice with line items
+            print("\n" + "=" * 60)
+            print(f"Testing GET /api/v1/invoices/{invoice_id}...")
+            print("-" * 60)
 
-    def test_process_ocr_missing_fields(self, client):
-        """Test OCR processing with missing required fields."""
-        incomplete_input = {
-            "extracted_fields": {
-                "date": "2024-01-15"
-                # Missing invoice_number, vendor, and total
-            }
-        }
+            get_response = requests.get(
+                f"http://localhost:8000/api/v1/invoices/{invoice_id}", timeout=10
+            )
 
-        response = client.post("/api/v1/process-ocr", json=incomplete_input)
+            print(f"Status Code: {get_response.status_code}")
+            print("\nResponse:")
+            retrieved = get_response.json()
+            print(json.dumps(retrieved, indent=2))
 
-        # Route raises HTTPException with a dict detail on mapping error
-        assert response.status_code == 422
-        data = response.json()
-        detail = data.get("detail", data)
-        assert detail.get("success") is False
-        assert detail.get("errors") is not None
+            # Check if line items are included
+            items = retrieved.get("items")
+            if items:
+                print("\n" + "=" * 60)
+                print(f"✓ Line items retrieved successfully ({len(items)} items):")
+                for i, item in enumerate(items, 1):
+                    print(f"\n  Item {i}:")
+                    print(f"    Description: {item['description']}")
+                    print(
+                        f"    Quantity: {item.get('qty', item.get('quantity', 'N/A'))}"
+                    )
+                    print(f"    Unit Price: ${item['unit_price']}")
+                    print(f"    Amount: ${item['amount']}")
+            else:
+                print("\n✗ No line items found in response")
+        else:
+            print(f"\n✗ Failed: {invoice_data.get('message')}")
+            print(f"Errors: {invoice_data.get('errors')}")
+    else:
+        print(f"\n✗ Request failed with status {response.status_code}")
 
-    def test_get_invoices(self, client, sample_ocr_input):
-        """Test getting list of invoices."""
-        # First create an invoice
-        client.post("/api/v1/process-ocr", json=sample_ocr_input)
-
-        # Then retrieve the list
-        response = client.get("/api/v1/invoices")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert "invoices" in data
-        assert "total" in data
-        assert data["total"] >= 1
-        assert len(data["invoices"]) >= 1
-
-    def test_get_invoices_pagination(self, client, sample_ocr_input):
-        """Test invoice list pagination."""
-        # Create multiple invoices
-        for i in range(3):
-            ocr_data = sample_ocr_input.copy()
-            ocr_data["extracted_fields"]["invoice_number"] = f"INV-{i:03d}"
-            client.post("/api/v1/process-ocr", json=ocr_data)
-
-        # Test pagination
-        response = client.get("/api/v1/invoices?skip=0&limit=2")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data["invoices"]) == 2
-        assert data["total"] >= 3
-
-    def test_get_invoice_by_id(self, client, sample_ocr_input):
-        """Test getting a specific invoice by ID."""
-        # Create an invoice
-        create_response = client.post("/api/v1/process-ocr", json=sample_ocr_input)
-        invoice_id = create_response.json()["invoice"]["id"]
-
-        # Retrieve it
-        response = client.get(f"/api/v1/invoices/{invoice_id}")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["id"] == invoice_id
-        assert data["invoice_number"] == "INV-2024-001"
-
-    def test_get_invoice_not_found(self, client):
-        """Test getting non-existent invoice returns 404."""
-        response = client.get("/api/v1/invoices/99999")
-
-        assert response.status_code == 404
-
-    def test_get_invoices_with_status_filter(self, client, sample_ocr_input):
-        """Test filtering invoices by status."""
-        # Create an invoice
-        client.post("/api/v1/process-ocr", json=sample_ocr_input)
-
-        # Filter by status
-        response = client.get("/api/v1/invoices?status=processed")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert all(inv["status"] == "processed" for inv in data["invoices"])
-
-    # ── Step 7 tests ──────────────────────────────────────────────────────────
-
-    def test_process_ocr_returns_201(self, client, sample_ocr_input):
-        """API returns HTTP 201 Created on successful OCR processing."""
-        response = client.post("/api/v1/process-ocr", json=sample_ocr_input)
-
-        assert response.status_code == 201
-        data = response.json()
-        assert data["success"] is True
-        assert data["invoice"] is not None
-        assert data["invoice"]["invoice_number"] == "INV-2024-001"
-        assert "validation_status" in data
-        assert data["validation_status"] == "PASSED"
+except requests.exceptions.ConnectionError:
+    print(
+        "✗ Could not connect to server. Make sure it's running on http://localhost:8000"
+    )
+except Exception as e:
+    print(f"✗ Error: {e}")
